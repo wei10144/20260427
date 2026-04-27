@@ -46,7 +46,7 @@
       </div>
     </div>
 
-    <audio id="drum-sound" src="/drum-roll-gaming-sound-effect-hd.mp3" preload="auto"></audio>
+    <audio id="drum-sound" src="drum-roll-gaming-sound-effect-hd.mp3" preload="auto"></audio>
     <audio id="cheer-sound" src="https://actions.google.com/sounds/v1/crowds/crowd_loud_cheer.ogg" preload="auto"></audio>
   </div>
 </template>
@@ -80,14 +80,13 @@ const resetList = () => {
 const fireConfetti = () => {
   const launch = () => {
     window.confetti({
-      particleCount: 150, // 噴發 150 片彩紙
-      spread: 100,        // 噴發角度範圍
-      origin: { y: 0.6 }, // 噴發點 (稍微偏畫面下方往上噴)
-      colors: ['#ef4444', '#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ffffff'] // 配合你的像素 UI 色系
+      particleCount: 150, 
+      spread: 100,        
+      origin: { y: 0.6 }, 
+      colors: ['#ef4444', '#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ffffff'] 
     })
   }
 
-  // 檢查是否已經載入過套件，沒有的話就動態載入
   if (window.confetti) {
     launch()
   } else {
@@ -108,11 +107,15 @@ const pickRandom = async () => {
   isRolling.value = true
   hasDrawn.value = false 
 
-  // 🔊 1. 開始抽籤，播放擊鼓聲
+  // 🔊 1. 抓取標籤並強力播放擊鼓聲
   const drumSfx = document.getElementById('drum-sound')
   if (drumSfx) {
+    drumSfx.volume = 1.0 // 確保音量是滿的
     drumSfx.currentTime = 0 
-    drumSfx.play().catch(err => console.log('音效被阻擋:', err))
+    // 若被瀏覽器阻擋，會在主控台報錯並跳出提示
+    drumSfx.play().catch(err => {
+      console.warn('音效無法自動播放，原因:', err)
+    })
   }
 
   const winnerIndex = Math.floor(Math.random() * items.length)
@@ -147,11 +150,12 @@ const pickRandom = async () => {
     if (drumSfx) drumSfx.pause()
     const cheerSfx = document.getElementById('cheer-sound')
     if (cheerSfx) {
+      cheerSfx.volume = 1.0
       cheerSfx.currentTime = 0
       cheerSfx.play().catch(err => console.log('音效被阻擋:', err))
     }
 
-    // 🎆 3. 噴發彩炮動畫！
+    // 🎆 3. 噴發彩炮動畫
     fireConfetti()
 
     if (excludeSelected.value) {

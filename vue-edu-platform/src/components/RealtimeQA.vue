@@ -21,16 +21,8 @@
             <span class="student-count">人數: {{ roomState.students.length }} 🟢</span>
           </div>
           <div class="code-display">
-            <p>請學生輸入代碼或掃描加入</p>
+            <p>請學生輸入此代碼</p>
             <div class="room-code">{{ roomState.code }}</div>
-            
-            <button class="qr-toggle-btn" @click="showQR = !showQR">
-              {{ showQR ? '隱藏 QR Code' : '📱 顯示 QR Code' }}
-            </button>
-            
-            <div v-if="showQR" class="qr-code-wrapper">
-              <img :src="qrCodeUrl" alt="Room QR Code" class="pixel-qr" />
-            </div>
           </div>
         </div>
 
@@ -108,7 +100,7 @@
 
       <div v-if="!joined" class="join-room card">
         <h2>加入互動課堂</h2>
-        <p class="subtitle">請確認教室代碼，並輸入您的暱稱</p>
+        <p class="subtitle">請輸入老師提供的代碼與您的暱稱</p>
         
         <div class="input-group">
           <label>教室代碼 (Room ID)</label>
@@ -117,7 +109,7 @@
 
         <div class="input-group">
           <label>你的名字 (暱稱) <span class="required">*必填</span></label>
-          <input type="text" v-model="nickname" placeholder="請輸入姓名或座號" autofocus>
+          <input type="text" v-model="nickname" placeholder="請輸入姓名或座號">
         </div>
 
         <button class="mega-btn" @click="joinRoom" :disabled="!joinCode || !nickname">進入教室</button>
@@ -160,7 +152,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const role = ref(null) 
 let syncInterval = null
@@ -170,20 +162,8 @@ const roomState = ref({
   code: '',
   isActive: false,
   type: '', 
-  students: [], 
-  results: []   
-})
-
-// === QR Code 邏輯 ===
-const showQR = ref(false)
-
-// 動態產生包含房間代碼的專屬網址 QR Code
-const qrCodeUrl = computed(() => {
-  if (!roomState.value.code) return ''
-  // 組合當前網址，並加上 ?room=代碼
-  const url = `${window.location.origin}${window.location.pathname}?room=${roomState.value.code}`
-  // 使用開源 API 產生圖片
-  return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`
+  students: [], // { nickname: '小明' }
+  results: []   // { nickname: '小明', answer: 'A' }
 })
 
 // === 共用資料同步邏輯 ===
@@ -258,16 +238,11 @@ const joinError = ref(false)
 const myAnswerSubmitted = ref(false)
 const openAnswer = ref('')
 
-// 🎯 初始化：檢查網址是否有代碼 (處理掃描 QR Code 進來的學生)
+// 檢查網址是否有代碼
 onMounted(() => {
   const urlParams = new URLSearchParams(window.location.search)
   const roomParam = urlParams.get('room')
-  if (roomParam) {
-    joinCode.value = roomParam   // 自動填入教室代碼
-    role.value = 'student'       // 自動切換為學生端畫面
-    // 啟動資料同步
-    syncInterval = setInterval(loadFromStorage, 1000)
-  }
+  if (roomParam) joinCode.value = roomParam
 })
 
 const joinRoom = () => {
@@ -287,7 +262,7 @@ const joinRoom = () => {
 
 const submitAnswer = (answer) => {
   if (!answer) return
-  loadFromStorage() 
+  loadFromStorage() // 先抓最新資料避免覆蓋
   roomState.value.results.push({ nickname: nickname.value, answer })
   saveToStorage()
   
@@ -321,31 +296,6 @@ const submitAnswer = (answer) => {
 .code-display p { margin: 0 0 10px 0; font-size: 0.9rem; }
 .room-code { font-size: 3.5rem; font-weight: bold; letter-spacing: 5px; text-shadow: 2px 2px 0px var(--color-3); }
 
-/* QR Code 樣式 */
-.qr-toggle-btn {
-  margin-top: 15px;
-  background: transparent;
-  border: 2px solid var(--color-5);
-  color: var(--color-5);
-  padding: 8px 15px;
-  font-size: 1rem;
-  cursor: pointer;
-  width: 100%;
-}
-.qr-toggle-btn:hover { background: var(--color-4); color: var(--color-1); }
-.qr-code-wrapper {
-  margin-top: 15px;
-  background: white;
-  padding: 10px;
-  display: inline-block;
-  border: 4px solid var(--color-5);
-}
-.pixel-qr {
-  width: 150px;
-  height: 150px;
-  image-rendering: pixelated; /* 強化像素風格 */
-}
-
 .status-box { background: var(--color-1); border: 4px solid var(--color-5); text-align: center; padding: 20px; margin-bottom: 15px; transition: all 0.3s; }
 .status-box.active { border-color: #10b981; box-shadow: inset 0 0 10px rgba(16, 185, 129, 0.2); }
 .status-icon { font-size: 2.5rem; color: #10b981; margin-bottom: 10px; }
@@ -354,7 +304,7 @@ const submitAnswer = (answer) => {
 .control-buttons button { padding: 12px; font-size: 1.1rem; }
 .stop-btn { background-color: #ef4444; color: white; border-color: #b91c1c; box-shadow: 4px 4px 0px #b91c1c; }
 
-/* 右側：統計圖表 */
+/* 右側：統計圖表 (垂直長條圖) */
 .right-panel { display: flex; flex-direction: column; min-height: 500px; }
 .chart-container { flex: 1; display: flex; justify-content: center; align-items: flex-end; padding: 40px 20px; background: var(--color-1); border: 4px solid var(--color-5); margin-bottom: 20px; }
 .bar-chart { display: flex; justify-content: space-around; width: 100%; max-width: 500px; height: 250px; }
@@ -383,7 +333,7 @@ const submitAnswer = (answer) => {
 .input-group { text-align: left; margin-bottom: 20px; }
 .input-group label { display: block; font-weight: bold; margin-bottom: 8px; }
 .required { color: #ef4444; font-size: 0.8rem; }
-.input-group input { width: 100%; font-size: 1.5rem; padding: 10px; background: var(--color-1); border: 4px solid var(--color-5); }
+.input-group input { width: 100%; font-size: 1.5rem; padding: 10px; background: var(--color-1); }
 .error-text { color: #ef4444; font-weight: bold; margin-top: 15px; }
 
 .status-badge { display: inline-block; background: var(--color-1); border: 2px solid var(--color-5); padding: 8px 15px; font-weight: bold; margin-bottom: 30px; }
@@ -392,9 +342,9 @@ const submitAnswer = (answer) => {
 .spinner { font-size: 4rem; animation: bounce 1s infinite alternate; margin-bottom: 20px; }
 .q-title { text-align: center; font-size: 1.5rem; margin-bottom: 30px; }
 .mcq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 500px; margin: 0 auto; }
-.mcq-btn { font-size: 3rem; padding: 40px 20px; background: var(--color-4); box-shadow: 6px 6px 0px var(--color-5); border: 4px solid var(--color-5); }
+.mcq-btn { font-size: 3rem; padding: 40px 20px; background: var(--color-4); box-shadow: 6px 6px 0px var(--color-5); }
 .open-input { max-width: 600px; margin: 0 auto; }
-.open-input textarea { width: 100%; font-size: 1.2rem; padding: 15px; background: var(--color-1); border: 4px solid var(--color-5); }
+.open-input textarea { width: 100%; font-size: 1.2rem; padding: 15px; background: var(--color-1); }
 
 @keyframes blink { 50% { opacity: 0.3; } }
 @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-15px); } }

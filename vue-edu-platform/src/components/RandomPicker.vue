@@ -46,7 +46,7 @@
       </div>
     </div>
 
-    <audio id="drum-sound" src="drum-roll-gaming-sound-effect-hd.mp3" preload="auto"></audio>
+    <audio id="drum-sound" src="/drum-roll-gaming-sound-effect-hd.mp3" preload="auto"></audio>
     <audio id="cheer-sound" src="https://actions.google.com/sounds/v1/crowds/crowd_loud_cheer.ogg" preload="auto"></audio>
   </div>
 </template>
@@ -57,7 +57,7 @@ import { ref, nextTick, computed } from 'vue'
 const listInput = ref('第一組\n第二組\n第三組\n第四組\n第五組\n第六組')
 const excludeSelected = ref(true)
 const isRolling = ref(false)
-const hasDrawn = ref(false)
+const hasDrawn = ref(false) // 控管是否已經抽完籤的變數
 
 const slotItems = ref(['等待抽籤...'])
 const trackStyle = ref({ transform: 'translateY(0px)', transition: 'none' })
@@ -72,28 +72,7 @@ const resetList = () => {
     listInput.value = '第一組\n第二組\n第三組\n第四組\n第五組\n第六組'
     slotItems.value = ['等待抽籤...']
     trackStyle.value = { transform: 'translateY(0px)', transition: 'none' }
-    hasDrawn.value = false 
-  }
-}
-
-// 🎆 觸發彩炮的專屬函數 (動態載入 canvas-confetti)
-const fireConfetti = () => {
-  const launch = () => {
-    window.confetti({
-      particleCount: 150, 
-      spread: 100,        
-      origin: { y: 0.6 }, 
-      colors: ['#ef4444', '#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ffffff'] 
-    })
-  }
-
-  if (window.confetti) {
-    launch()
-  } else {
-    const script = document.createElement('script')
-    script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js'
-    script.onload = launch
-    document.head.appendChild(script)
+    hasDrawn.value = false // 重置時隱藏標題
   }
 }
 
@@ -104,23 +83,21 @@ const pickRandom = async () => {
     return
   }
 
+  // 狀態初始化：正在轉動，隱藏中獎標題
   isRolling.value = true
   hasDrawn.value = false 
 
-  // 🔊 1. 抓取標籤並強力播放擊鼓聲
+  // 🔊 1. 抓取標籤並播放擊鼓聲
   const drumSfx = document.getElementById('drum-sound')
   if (drumSfx) {
-    drumSfx.volume = 1.0 // 確保音量是滿的
     drumSfx.currentTime = 0 
-    // 若被瀏覽器阻擋，會在主控台報錯並跳出提示
-    drumSfx.play().catch(err => {
-      console.warn('音效無法自動播放，原因:', err)
-    })
+    drumSfx.play().catch(err => console.log('擊鼓音效被瀏覽器阻擋:', err))
   }
 
   const winnerIndex = Math.floor(Math.random() * items.length)
   const finalWinner = items[winnerIndex]
 
+  // 建立捲動動畫的假名單
   const track = []
   for(let i = 0; i < 20; i++) {
     track.push(items[Math.floor(Math.random() * items.length)])
@@ -132,7 +109,7 @@ const pickRandom = async () => {
 
   await nextTick()
 
-  // 啟動 3.5 秒視覺滾動動畫
+  // 啟動 3.5 秒的視覺滾動動畫
   setTimeout(() => {
     const targetY = -((track.length - 1) * itemHeight)
     trackStyle.value = {
@@ -141,22 +118,19 @@ const pickRandom = async () => {
     }
   }, 50)
 
-  // 3.6 秒後動畫停止
+  // 3.6 秒後動畫煞車停止
   setTimeout(() => {
     isRolling.value = false
-    hasDrawn.value = true 
+    hasDrawn.value = true // 動畫停止時，顯示「恭喜得獎者」標題
     
     // 🔊 2. 暫停擊鼓聲，播放歡呼聲
     if (drumSfx) drumSfx.pause()
+    
     const cheerSfx = document.getElementById('cheer-sound')
     if (cheerSfx) {
-      cheerSfx.volume = 1.0
       cheerSfx.currentTime = 0
-      cheerSfx.play().catch(err => console.log('音效被阻擋:', err))
+      cheerSfx.play().catch(err => console.log('歡呼音效被瀏覽器阻擋:', err))
     }
-
-    // 🎆 3. 噴發彩炮動畫
-    fireConfetti()
 
     if (excludeSelected.value) {
       listInput.value = items.filter(item => item !== finalWinner).join('\n')
@@ -186,8 +160,6 @@ const pickRandom = async () => {
   margin-bottom: 20px;
   border: 4px solid var(--color-5);
   box-shadow: 6px 6px 0px var(--color-4);
-  position: relative; 
-  z-index: 10;
 }
 
 .display-title {
@@ -198,15 +170,14 @@ const pickRandom = async () => {
   border: 2px dashed var(--color-5);
   padding: 10px 30px;
   background: var(--color-1);
-  /* 預設隱藏並加入彈出動畫 */
+  /* 預設為完全透明，並加入過渡動畫 */
   opacity: 0; 
-  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  transform: scale(0.8);
+  transition: opacity 0.5s ease;
 }
 
+/* 當 hasDrawn 為 true 時觸發此 class 顯示標題 */
 .display-title.is-visible {
   opacity: 1;
-  transform: scale(1);
 }
 
 .slot-machine-wrapper {
@@ -252,8 +223,6 @@ const pickRandom = async () => {
   width: 100%;
   max-width: 800px;
   margin-bottom: 30px;
-  position: relative;
-  z-index: 10;
 }
 
 .mega-spin-btn {
@@ -303,8 +272,6 @@ const pickRandom = async () => {
   border: 4px solid var(--color-5);
   padding: 20px;
   box-shadow: 6px 6px 0px var(--color-4);
-  position: relative;
-  z-index: 10;
 }
 
 .settings-title {
